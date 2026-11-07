@@ -945,6 +945,14 @@ public:
     // Sets a parameter that can be used for experimental code changes in the library.
     // Has no effect on release builds.
     virtual void SetExperimentalKnob(float value) = 0;
+
+    // Copies the FP16 training weights and the per-channel output mapping to host memory.
+    // Valid after the last RunCompressionSteps(...) call and before FinalizeCompression().
+    // With pOutWeights = NULL, only writes the weight count into *pInOutWeightCount.
+    // The weights are both halves of the training buffer in the FP16 weight layout, the half that
+    // FinalizeCompression quantizes to FP8 first, then the half it quantizes to Int8.
+    // The mapping is 'linear = optimal * scale + bias', one (scale, bias) pair per texture set channel.
+    virtual Status GetTrainingState(void* pOutWeights, size_t* pInOutWeightCount, float* pOutChannelMapping) = 0;
 };
 
 // This interface implements a fast search algorithm to experimentally identify the optimal compression preset

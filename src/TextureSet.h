@@ -99,6 +99,8 @@ public:
 
     void SetExperimentalKnob(float value) override;
 
+    Status GetTrainingState(void* pOutWeights, size_t* pInOutWeightCount, float* pOutChannelMapping) override;
+
 private:
     TextureSetFeatures m_features{};
     std::array<uint64_t, NTC_MAX_MIPS+1> m_textureMipOffsets{};

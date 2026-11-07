@@ -51,4 +51,9 @@ void SetChannelInfos(const ChannelInfo* data, int count)
     cudaMemcpyToSymbol(g_ChannelInfo, data, sizeof(ChannelInfo) * count);
 }
 
+cudaError_t GetChannelInfos(ChannelInfo* data, int count)
+{
+    return cudaMemcpyFromSymbol(data, g_ChannelInfo, sizeof(ChannelInfo) * count);
+}
+
 }

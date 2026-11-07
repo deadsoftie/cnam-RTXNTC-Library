@@ -24,6 +24,7 @@ namespace ntc::cuda
 
 void SetMipInfos(const MipInfo* data, int count);
 void SetChannelInfos(const ChannelInfo* data, int count);
+cudaError_t GetChannelInfos(ChannelInfo* data, int count);
 
 bool ValidateKernelSpec(
     int highResFeatures,

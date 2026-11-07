@@ -1918,6 +1918,73 @@ void TextureSet::SetExperimentalKnob(float value)
     m_experimentalKnob = value;
 }
 
+Status TextureSet::GetTrainingState(void* pOutWeights, size_t* pInOutWeightCount, float* pOutChannelMapping)
+{
+    if (!pInOutWeightCount)
+    {
+        SetErrorMessage("pInOutWeightCount is NULL.");
+        return Status::InvalidArgument;
+    }
+
+    size_t const weightCount = size_t(m_numNetworkParams) * 2;
+
+    if (!pOutWeights)
+    {
+        *pInOutWeightCount = weightCount;
+        ClearErrorMessage();
+        return Status::Ok;
+    }
+
+    if (m_networkState != TextureSetNetworkState::TrainingFinished)
+    {
+        SetErrorMessage("Invalid network state for GetTrainingState (%s), must be TrainingFinished.",
+            NetworkStateToString(m_networkState));
+        return Status::InvalidState;
+    }
+
+    if (*pInOutWeightCount < weightCount)
+    {
+        SetErrorMessage("The weight buffer holds %zu values, %zu needed.", *pInOutWeightCount, weightCount);
+        return Status::InvalidArgument;
+    }
+
+    if (!pOutChannelMapping)
+    {
+        SetErrorMessage("pOutChannelMapping is NULL.");
+        return Status::InvalidArgument;
+    }
+
+    CudaDeviceGuard cudaGuard(m_context);
+    if (!cudaGuard.Success())
+        return Status::CudaError;
+
+    cudaError_t err = cudaMemcpy(pOutWeights, m_mlpWeightsQuantized.DevicePtr(), weightCount * sizeof(half),
+        cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess)
+    {
+        SetCudaErrorMessage("cudaMemcpy (mlpWeights)", err);
+        return Status::CudaError;
+    }
+
+    std::array<ChannelInfo, NTC_MAX_CHANNELS> channelInfos;
+    err = cuda::GetChannelInfos(channelInfos.data(), m_desc.channels);
+    if (err != cudaSuccess)
+    {
+        SetCudaErrorMessage("cudaMemcpyFromSymbol (ChannelInfo)", err);
+        return Status::CudaError;
+    }
+
+    for (int channel = 0; channel < m_desc.channels; ++channel)
+    {
+        pOutChannelMapping[channel * 2 + 0] = channelInfos[channel].optimalToLinearScale;
+        pOutChannelMapping[channel * 2 + 1] = channelInfos[channel].optimalToLinearBias;
+    }
+
+    *pInOutWeightCount = weightCount;
+    ClearErrorMessage();
+    return Status::Ok;
+}
+
 Status TextureSet::ValidateReadWriteChannelsArgs(int mipLevel, int firstChannel, int numChannels,
     int width, int height, size_t pixelStride, size_t rowPitch, size_t sizeToCopy, ChannelFormat format)
 {
